@@ -353,7 +353,7 @@ public class MHSocketManager implements IMHSocketController {
 
 
     private void sendScheduleData(IMHTimingData data) {
-        if (TextUtils.isEmpty(data.getTag()) || data.getScheduleTime() > 0 || data.getByteData() == null) {
+        if (TextUtils.isEmpty(data.getTag()) || data.getScheduleTime() < 0 || data.getByteData() == null) {
             onException(new NullPointerException("请初始化 定时数据的tag ,定时的时间 及其 发送的数据"));
             throw new NullPointerException("请初始化 定时数据的tag ,定时的时间 及其 发送的数据");
         }
