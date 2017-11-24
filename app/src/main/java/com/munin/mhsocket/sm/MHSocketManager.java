@@ -17,6 +17,8 @@ import java.net.Socket;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static com.munin.mhsocket.sm.interfaces.MHSocketState.STATE_CONNECTED;
 import static com.munin.mhsocket.sm.interfaces.MHSocketState.STATE_CONNECTING;
@@ -44,6 +46,8 @@ public class MHSocketManager implements IMHSocketController {
     private static String STATE_SOCKET = STATE_DEFAULT;
 
     private IMHSocketConfig defaultConfigure;
+
+    private Lock mLock = new ReentrantLock();
 
     private MHSocketManager() {
     }
@@ -402,23 +406,31 @@ public class MHSocketManager implements IMHSocketController {
 
     //发送数据
     private void sendMsg(byte[] msg) {
-        MHDebug.E("mh_socket", "发送。。。。。。。。。");
-        if (null == socket) {
-            reconnect();
-            return;
-        }
-        if (!socket.isClosed() && !socket.isOutputShutdown()) {
-            try {
-                os_socket.write(msg);
-                os_socket.flush();
-            } catch (IOException e) {
-                e.printStackTrace();
-                MHDebug.E("mh_socket", "写操作+重连" + e.getMessage());
+        mLock.lock();
+        try {
+            Thread.sleep(100);
+            MHDebug.E("mh_socket", "发送。。。。。。。。。");
+            if (null == socket) {
+                reconnect();
+                return;
+            }
+            if (!socket.isClosed() && !socket.isOutputShutdown()) {
+                try {
+                    os_socket.write(msg);
+                    os_socket.flush();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    MHDebug.E("mh_socket", "写操作+重连" + e.getMessage());
+                    reconnect();
+                }
+            } else {
+                MHDebug.E("mh_socket", "读写无法连接+重连");
                 reconnect();
             }
-        } else {
-            MHDebug.E("mh_socket", "读写无法连接+重连");
-            reconnect();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            mLock.unlock();
         }
     }
 
