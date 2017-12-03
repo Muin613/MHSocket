@@ -11,6 +11,7 @@ import java.io.Serializable;
  * Created by Administrator on 2017/11/1.
  * <p>
  * 定时发送的特殊数据
+ * 该类善用，会导致不必要的空指针异常
  */
 
 public class MHTimingData implements Serializable, IMHTimingData {
@@ -27,8 +28,11 @@ public class MHTimingData implements Serializable, IMHTimingData {
     public void run() {
         if (null != handler && null != manager) {
             manager.sendByteMsg(data);
-            if (time > -1)
-                handler.postDelayed(this, time);
+            try {
+                if (time > -1)
+                    handler.postDelayed(this, time);
+            } catch (Exception e) {
+            }
         }
 
     }
@@ -96,7 +100,6 @@ public class MHTimingData implements Serializable, IMHTimingData {
     public IMHSocketController getSocketController() {
         return manager;
     }
-
 
 
 }
