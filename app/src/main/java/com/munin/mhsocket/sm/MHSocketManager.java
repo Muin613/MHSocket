@@ -16,6 +16,8 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -48,6 +50,10 @@ public class MHSocketManager implements IMHSocketController {
     private IMHSocketConfig defaultConfigure;
 
     private Lock mLock = new ReentrantLock();
+    private volatile boolean cancel = false;
+
+    private Thread sendThread;
+    private BlockingQueue<byte[]> queue;
 
     private MHSocketManager() {
     }
@@ -209,10 +215,12 @@ public class MHSocketManager implements IMHSocketController {
             MHDebug.E("mh_socket", "初始化1:" + STATE_SOCKET);
             if (socket.isConnected()) {
                 socket.setReceiveBufferSize(1024 * 20);
+                socket.setTcpNoDelay(true);
                 STATE_SOCKET = STATE_CONNECTED;
                 is_socket = socket.getInputStream();
                 os_socket = socket.getOutputStream();
-
+                cancel = false;
+                queue = new ArrayBlockingQueue<byte[]>(500, true);
                 if (defaultConfigure != null) {
                     IMHSocketListener listener = defaultConfigure.getListener();
                     if (listener != null)
@@ -221,6 +229,7 @@ public class MHSocketManager implements IMHSocketController {
                 MHDebug.E("mh_socket", STATE_SOCKET);
 //                接收信息
                 new Thread(receiveRunnable).start();
+
 
             } else {
 //            重连
@@ -234,10 +243,12 @@ public class MHSocketManager implements IMHSocketController {
 //            重连
             MHDebug.E("mh_socket", "连接操作+重连" + e.getMessage());
             reconnect();
+
             MHDebug.E("mh_socket", "state 2:" + STATE_SOCKET);
 
         }
     }
+
 
     //    开始连接socket
     private void start() {
@@ -257,6 +268,8 @@ public class MHSocketManager implements IMHSocketController {
                 e.printStackTrace();
             } finally {
                 socket = null;
+                sendThread = null;
+                cancel = true;
                 closeIO();
             }
         }
@@ -280,6 +293,8 @@ public class MHSocketManager implements IMHSocketController {
 
     //重连
     private void reconnect() {
+        cancel = true;
+        sendThread = null;
         STATE_SOCKET = STATE_RECONNECT;
         cancel();
         if (defaultConfigure != null) {
@@ -300,7 +315,20 @@ public class MHSocketManager implements IMHSocketController {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            new SendSocketMsgThread(msg).start();
+
+            try {
+                queue.put(msg);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            mLock.lock();
+            try {
+                if (sendThread == null) {
+                    sendThread = new SendSocketMsgThread();
+                }
+            } finally {
+                mLock.unlock();
+            }
         }
     }
 
@@ -391,47 +419,40 @@ public class MHSocketManager implements IMHSocketController {
 
 
     public class SendSocketMsgThread extends Thread {
-        private byte[] msg = null;
 
-        public SendSocketMsgThread(byte[] msg) {
-            this.msg = msg;
-        }
 
         @Override
         public void run() {
             super.run();
-            sendMsg(msg);
+            send();
         }
     }
 
-    //发送数据
-    private void sendMsg(byte[] msg) {
-        mLock.lock();
-        try {
-            Thread.sleep(100);
-            MHDebug.E("mh_socket", "发送。。。。。。。。。");
-            if (null == socket) {
-                reconnect();
-                return;
+
+    public void send() {
+
+        if (null == socket) {
+            reconnect();
+            return;
+        }
+        while (!socket.isClosed() && !socket.isOutputShutdown() && !cancel) {
+            byte[] data = null;
+            try {
+                if (queue.size() != 0)
+                    data = queue.take();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
-            if (!socket.isClosed() && !socket.isOutputShutdown()) {
+            if (data != null)
                 try {
-                    os_socket.write(msg);
+                    os_socket.write(data);
                     os_socket.flush();
                 } catch (IOException e) {
                     e.printStackTrace();
-                    MHDebug.E("mh_socket", "写操作+重连" + e.getMessage());
-                    reconnect();
+                    cancel = true;
                 }
-            } else {
-                MHDebug.E("mh_socket", "读写无法连接+重连");
-                reconnect();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            mLock.unlock();
         }
+        reconnect();
     }
 
 }
