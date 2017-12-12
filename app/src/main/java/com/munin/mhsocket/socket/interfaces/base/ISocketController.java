@@ -6,15 +6,15 @@ package com.munin.mhsocket.socket.interfaces.base;
 
 public interface ISocketController {
     //开启
-    void startSocket();
+    ISocketController startSocket();
 
     //停止
-    void stopSocket();
+    ISocketController stopSocket();
 
     //发送数据
-    void sendByteMsg(byte[] data);
+    ISocketController sendByteMsg(byte[] data);
 
     //接收数据
-    void receiveByteData(byte[] data);
+    ISocketController receiveByteData(byte[] data);
 
 }

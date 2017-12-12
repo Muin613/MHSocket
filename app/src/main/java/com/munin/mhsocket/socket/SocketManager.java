@@ -5,6 +5,7 @@ import com.munin.mhsocket.socket.entity.SocketConfig;
 import com.munin.mhsocket.socket.entity.SocketInput;
 import com.munin.mhsocket.socket.entity.SocketOutput;
 import com.munin.mhsocket.socket.interfaces.ISocket;
+import com.munin.mhsocket.socket.interfaces.ISocketListener;
 import com.munin.mhsocket.socket.interfaces.ISocketStateListener;
 import com.munin.mhsocket.socket.log.Debug;
 
@@ -31,8 +32,25 @@ public class SocketManager implements ISocket, ISocketStateListener {
     private Object checkLock;
     private byte[] heartData = null;
     private int heartTime = 1000;
+    private ISocketListener listener;
 
     private SocketManager() {
+
+    }
+
+    public static synchronized SocketManager newInstance() {
+        if (null == manager)
+            manager = new SocketManager();
+        return manager;
+    }
+
+    public SocketManager setHostPort(String host, int port) {
+        this.host = host;
+        this.port = port;
+        return this;
+    }
+
+    public synchronized SocketManager build() {
         if (null == client) {
             if (null == host || "".equals(host))
                 client = new SocketClient
@@ -47,75 +65,107 @@ public class SocketManager implements ISocket, ISocketStateListener {
             lock = new Object();
             checkLock = new Object();
         }
+        return this;
     }
 
-    public static synchronized SocketManager newInstance() {
-        if (null == manager)
-            manager = new SocketManager();
-        return manager;
+    public SocketManager setListener(ISocketListener listener) {
+        this.listener = listener;
+        return this;
     }
 
+    public SocketManager setHeart(byte[] heartData) {
+        this.heartData = heartData;
+        return this;
+    }
 
     @Override
-    public void startSocket() {
+    public SocketManager startSocket() {
         start();
+        return this;
     }
 
     @Override
-    public synchronized void stopSocket() {
-        client.destroy();
+    public synchronized SocketManager stopSocket() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                client.destroy();
+            }
+        }).start();
+        return this;
     }
 
     @Override
-    public synchronized void sendByteMsg(byte[] data) {
+    public synchronized SocketManager sendByteMsg(byte[] data) {
+        if (null != listener)
+            listener.sendData(data);
         if (null != output)
             output.sendData(data);
+        return this;
     }
 
     @Override
-    public void receiveByteData(byte[] data) {
+    public SocketManager receiveByteData(byte[] data) {
+        if (null != listener)
+            listener.receiveData(data);
+        return this;
     }
 
     @Override
-    public void reconnect() {
+    public SocketManager reconnect() {
         reconnectState();
         startSocket();
+        return this;
     }
 
 
     @Override
     public void createState() {
         Debug.E("socket", " socket create");
+        if (null != listener)
+            listener.onSocketState(500, " socket create");
     }
 
     @Override
     public void createFailState() {
         Debug.E("socket", " socket create fail");
+        if (null != listener)
+            listener.onSocketState(400, " socket create fail");
     }
 
     @Override
     public void connectingState() {
         Debug.E("socket", " socket connecting ");
+        if (null != listener)
+            listener.onSocketState(501, " socket connecting ");
     }
 
     @Override
     public void connectedState() {
         Debug.E("socket", " socket connected");
+        if (null != listener)
+            listener.onSocketState(502, " socket connected");
     }
 
     @Override
     public void disconnectState() {
         Debug.E("socket", " socket disconnected");
+        if (null != listener)
+            listener.onSocketState(401, " socket disconnected");
     }
 
     @Override
     public void cancelConnectState() {
         Debug.E("socket", " socket cancel");
+        if (null != listener)
+            listener.onSocketState(402, " socket cancel");
     }
 
     @Override
     public void reconnectState() {
         Debug.E("socket", " socket reconnect");
+        if (null != listener)
+            listener.onSocketState(403, " socket reconnect");
     }
 
     private void start() {
@@ -133,7 +183,7 @@ public class SocketManager implements ISocket, ISocketStateListener {
         }).start();
     }
 
-    public void startCheckConnect() {
+    public SocketManager startCheckConnect() {
         stopCheckConnect();
         synchronized (checkLock) {
             checkTimer = new Timer();
@@ -145,10 +195,11 @@ public class SocketManager implements ISocket, ISocketStateListener {
                 }
             }, 0, heartTime);
         }
+        return this;
     }
 
 
-    public void startHeart() {
+    public SocketManager startHeart() {
         stopHeart();
         synchronized (lock) {
             timer = new Timer();
@@ -160,6 +211,7 @@ public class SocketManager implements ISocket, ISocketStateListener {
                 }
             }, 0, heartTime);
         }
+        return this;
     }
 
     private void stopHeart() {

@@ -9,6 +9,6 @@ import com.munin.mhsocket.socket.interfaces.base.ISocketController;
 public interface ISocket extends ISocketController {
 
     //    重连
-    void reconnect();
+    ISocket reconnect();
 
 }
