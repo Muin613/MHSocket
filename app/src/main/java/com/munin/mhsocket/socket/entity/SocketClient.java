@@ -35,7 +35,7 @@ public class SocketClient {
             } else {
                 listener.disconnectState();
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             listener.createFailState();
         }

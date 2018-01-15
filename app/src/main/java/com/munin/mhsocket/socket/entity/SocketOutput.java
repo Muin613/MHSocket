@@ -91,7 +91,7 @@ public class SocketOutput {
                 try {
                     output.write(packet);
                     output.flush();
-                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                     close();
                     if (null != client)
