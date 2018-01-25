@@ -5,6 +5,7 @@ import com.munin.mhsocket.socket.interfaces.base.ISocketController;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Socket;
 
 /**
  * Created by munin on 2017/12/9.
@@ -17,11 +18,12 @@ public class SocketInput {
     private volatile boolean done = false;
     private Thread readerThread;
     private ISocketController listener;
-
-    public SocketInput(SocketClient client, InputStream input) {
+    Socket socket;
+    public SocketInput(SocketClient client, InputStream input,Socket socket) {
         this.client = client;
         this.input = input;
         done = false;
+        this.socket=socket;
     }
 
     public SocketInput bindListener(ISocketController controller) {
@@ -87,7 +89,7 @@ public class SocketInput {
         int length = 0;
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
-            while (!this.done && this.readerThread == thisThread && client.isConnect() && ((length = input.read(buffer)) != -1)) {
+            while (!this.done && this.readerThread == thisThread && client.isConnect() && ((length = input.read(buffer)) != -1)&&socket.isConnected()) {
                 if (length > 0) {
                     outputStream.write(buffer, 0, length);
                     byte[] result = outputStream.toByteArray();

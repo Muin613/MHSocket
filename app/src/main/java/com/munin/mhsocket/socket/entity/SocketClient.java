@@ -29,7 +29,7 @@ public class SocketClient {
             if (socket.isConnected()) {
                 socket.setReceiveBufferSize(1024 * 20);
                 socket.setTcpNoDelay(true);
-                input = new SocketInput(this, socket.getInputStream());
+                input = new SocketInput(this, socket.getInputStream(),socket);
                 output = new SocketOutput(this, socket.getOutputStream());
                 listener.connectedState();
             } else {

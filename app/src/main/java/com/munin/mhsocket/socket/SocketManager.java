@@ -172,13 +172,15 @@ public class SocketManager implements ISocket, ISocketStateListener {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                client.destroy();
-                client.createClient();
-                input = client.getInput();
-                output = client.getOutput();
-                input.bindListener(SocketManager.this);
-                input.startup();
-                output.startup();
+                synchronized (SocketManager.this) {
+                    client.destroy();
+                    client.createClient();
+                    input = client.getInput();
+                    output = client.getOutput();
+                    input.bindListener(SocketManager.this);
+                    input.startup();
+                    output.startup();
+                }
             }
         }).start();
     }
