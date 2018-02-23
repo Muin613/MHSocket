@@ -2,7 +2,6 @@ package com.munin.mhsocket.socket;
 
 import com.munin.mhsocket.socket.entity.SocketClient;
 import com.munin.mhsocket.socket.entity.SocketConfig;
-import com.munin.mhsocket.socket.entity.SocketInput;
 import com.munin.mhsocket.socket.entity.SocketOutput;
 import com.munin.mhsocket.socket.interfaces.ISocket;
 import com.munin.mhsocket.socket.interfaces.ISocketListener;
@@ -24,7 +23,6 @@ public class SocketManager implements ISocket, ISocketStateListener {
     private int port = -1;
     private String defaultHost = "192.169.1.1";
     private int defaultPort = 8080;
-    private SocketInput input;
     private SocketOutput output;
     private Timer timer;
     private Timer checkTimer;
@@ -33,6 +31,7 @@ public class SocketManager implements ISocket, ISocketStateListener {
     private byte[] heartData = null;
     private int heartTime = 1000;
     private ISocketListener listener;
+    private int heartTimeRatio = 1;
 
     private SocketManager() {
 
@@ -51,6 +50,23 @@ public class SocketManager implements ISocket, ISocketStateListener {
     }
 
     public synchronized SocketManager build() {
+        createClient();
+        return this;
+    }
+
+    //    设置时间，检测时间和心跳时间 默认1s
+    public synchronized SocketManager setTime(int time) {
+        heartTime = time;
+        return this;
+    }
+
+    //设置以基准为准的心跳比例
+    public synchronized SocketManager setHeartTimeRatio(int time) {
+        heartTimeRatio = time;
+        return this;
+    }
+
+    private void createClient() {
         if (null == client) {
             if (null == host || "".equals(host))
                 client = new SocketClient
@@ -65,7 +81,16 @@ public class SocketManager implements ISocket, ISocketStateListener {
             lock = new Object();
             checkLock = new Object();
         }
-        return this;
+    }
+
+    private void bindListenerAndStart() {
+        try {
+            client.destroy();
+            client.createClient(SocketManager.this);
+            output = client.getOutput();
+        } catch (Exception e) {
+            reconnect();
+        }
     }
 
     public SocketManager setListener(ISocketListener listener) {
@@ -89,7 +114,8 @@ public class SocketManager implements ISocket, ISocketStateListener {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                client.destroy();
+                if (null != client)
+                    client.destroy();
             }
         }).start();
         return this;
@@ -101,6 +127,8 @@ public class SocketManager implements ISocket, ISocketStateListener {
             listener.sendData(data);
         if (null != output)
             output.sendData(data);
+        else
+            reconnect();
         return this;
     }
 
@@ -173,13 +201,12 @@ public class SocketManager implements ISocket, ISocketStateListener {
             @Override
             public void run() {
                 synchronized (SocketManager.this) {
-                    client.destroy();
-                    client.createClient();
-                    input = client.getInput();
-                    output = client.getOutput();
-                    input.bindListener(SocketManager.this);
-                    input.startup();
-                    output.startup();
+                    if (null != client) {
+                        bindListenerAndStart();
+                    } else {
+                        createClient();
+                        bindListenerAndStart();
+                    }
                 }
             }
         }).start();
@@ -211,7 +238,7 @@ public class SocketManager implements ISocket, ISocketStateListener {
                     if (heartData != null && heartData.length > 0)
                         sendByteMsg(heartData);
                 }
-            }, 0, heartTime);
+            }, 0, heartTimeRatio * heartTime);
         }
         return this;
     }

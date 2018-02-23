@@ -19,11 +19,12 @@ public class SocketInput {
     private Thread readerThread;
     private ISocketController listener;
     Socket socket;
-    public SocketInput(SocketClient client, InputStream input,Socket socket) {
+
+    public SocketInput(SocketClient client, InputStream input, Socket socket) {
         this.client = client;
         this.input = input;
         done = false;
-        this.socket=socket;
+        this.socket = socket;
     }
 
     public SocketInput bindListener(ISocketController controller) {
@@ -89,7 +90,7 @@ public class SocketInput {
         int length = 0;
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
-            while (!this.done && this.readerThread == thisThread && client.isConnect() && ((length = input.read(buffer)) != -1)&&socket.isConnected()) {
+            while (!this.done && this.readerThread == thisThread && client.isConnect() && ((length = input.read(buffer)) != -1) && socket.isConnected()) {
                 if (length > 0) {
                     outputStream.write(buffer, 0, length);
                     byte[] result = outputStream.toByteArray();
@@ -97,10 +98,16 @@ public class SocketInput {
                         listener.receiveByteData(result);
                     outputStream.reset();
                 }
-
-
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
+            try {
+                if (null != outputStream) {
+                    outputStream.close();
+                    outputStream = null;
+                }
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
             close();
             client.destroy();
         }

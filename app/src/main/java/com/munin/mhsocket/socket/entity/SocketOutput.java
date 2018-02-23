@@ -2,6 +2,7 @@ package com.munin.mhsocket.socket.entity;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -16,8 +17,9 @@ public class SocketOutput {
     private Thread writerThread;
     private volatile boolean done = false;
     private final BlockingQueue<byte[]> queue = new ArrayBlockingQueue<byte[]>(500, true);
+    Socket socket;
 
-    public SocketOutput(SocketClient client, OutputStream output) {
+    public SocketOutput(SocketClient client, OutputStream output, Socket socket) {
         this.client = client;
         this.output = output;
         done = false;
@@ -85,7 +87,7 @@ public class SocketOutput {
     }
 
     private void writePackets(Thread thisThread) {
-        while (!this.done && this.writerThread == thisThread) {
+        while (!this.done && this.writerThread == thisThread && socket.isConnected()) {
             byte[] packet = nextPacket();
             if (packet != null && !done && this.writerThread == thisThread) {
                 try {
@@ -93,11 +95,13 @@ public class SocketOutput {
                     output.flush();
                 } catch (Exception e) {
                     e.printStackTrace();
-                    close();
-                    if (null != client)
-                        client.destroy();
                 }
             }
+        }
+        if (!socket.isConnected()) {
+            close();
+            if (null != client)
+                client.destroy();
         }
     }
 

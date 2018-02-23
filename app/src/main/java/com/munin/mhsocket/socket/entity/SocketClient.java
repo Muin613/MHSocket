@@ -1,5 +1,6 @@
 package com.munin.mhsocket.socket.entity;
 
+import com.munin.mhsocket.socket.interfaces.base.ISocketController;
 import com.munin.mhsocket.socket.interfaces.base.ISocketState;
 
 import java.io.IOException;
@@ -21,7 +22,7 @@ public class SocketClient {
         this.listener = listener;
     }
 
-    public void createClient() {
+    public void createClient(ISocketController controller) {
         try {
             listener.createState();
             socket = new Socket(config.getHost(), config.getPort());
@@ -30,7 +31,10 @@ public class SocketClient {
                 socket.setReceiveBufferSize(1024 * 20);
                 socket.setTcpNoDelay(true);
                 input = new SocketInput(this, socket.getInputStream(),socket);
-                output = new SocketOutput(this, socket.getOutputStream());
+                output = new SocketOutput(this, socket.getOutputStream(),socket);
+                input.bindListener(controller);
+                input.startup();
+                output.startup();
                 listener.connectedState();
             } else {
                 listener.disconnectState();
@@ -92,7 +96,7 @@ public class SocketClient {
     }
 
     public boolean isConnect() {
-        if (socket == null)
+        if (socket == null||input==null||output==null)
             return false;
         return socket.isConnected();
     }
