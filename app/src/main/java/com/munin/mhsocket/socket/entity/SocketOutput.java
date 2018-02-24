@@ -6,6 +6,10 @@ import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
+import okio.BufferedSink;
+import okio.Okio;
+import okio.Sink;
+
 /**
  * Created by munin on 2017/12/9.
  */
@@ -18,10 +22,15 @@ public class SocketOutput {
     private volatile boolean done = false;
     private final BlockingQueue<byte[]> queue = new ArrayBlockingQueue<byte[]>(500, true);
     Socket socket;
+    BufferedSink bufferedSink;
+    Sink sink;
 
     public SocketOutput(SocketClient client, OutputStream output, Socket socket) {
         this.client = client;
         this.output = output;
+        this.socket = socket;
+        sink = Okio.sink(this.output);
+        bufferedSink = Okio.buffer(sink);
         done = false;
     }
 
@@ -91,8 +100,10 @@ public class SocketOutput {
             byte[] packet = nextPacket();
             if (packet != null && !done && this.writerThread == thisThread) {
                 try {
-                    output.write(packet);
-                    output.flush();
+                    if (packet.length > 0) {
+                        bufferedSink.write(packet);
+                        bufferedSink.flush();
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -123,6 +134,14 @@ public class SocketOutput {
     public void close() {
         shutdown();
         try {
+            if (null != bufferedSink) {
+                bufferedSink.close();
+                bufferedSink = null;
+            }
+            if (null != sink) {
+                sink.close();
+                sink = null;
+            }
             if (null != output) {
                 output.close();
                 output = null;

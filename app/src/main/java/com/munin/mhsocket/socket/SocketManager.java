@@ -222,7 +222,7 @@ public class SocketManager implements ISocket, ISocketStateListener {
                     if (!client.isConnect())
                         reconnect();
                 }
-            }, 0, heartTime);
+            }, heartTime, heartTime);
         }
         return this;
     }
@@ -238,7 +238,7 @@ public class SocketManager implements ISocket, ISocketStateListener {
                     if (heartData != null && heartData.length > 0)
                         sendByteMsg(heartData);
                 }
-            }, 0, heartTimeRatio * heartTime);
+            }, heartTimeRatio * heartTime, heartTimeRatio * heartTime);
         }
         return this;
     }

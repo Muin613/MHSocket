@@ -1,11 +1,16 @@
 package com.munin.mhsocket.socket.entity;
 
 import com.munin.mhsocket.socket.interfaces.base.ISocketController;
+import com.munin.mhsocket.socket.log.Debug;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
+
+import okio.BufferedSource;
+import okio.Okio;
+import okio.Source;
 
 /**
  * Created by munin on 2017/12/9.
@@ -19,12 +24,16 @@ public class SocketInput {
     private Thread readerThread;
     private ISocketController listener;
     Socket socket;
+    BufferedSource bufferedSource;
+    Source source;
 
     public SocketInput(SocketClient client, InputStream input, Socket socket) {
         this.client = client;
         this.input = input;
         done = false;
         this.socket = socket;
+        source = Okio.source(this.input);
+        bufferedSource = Okio.buffer(source);
     }
 
     public SocketInput bindListener(ISocketController controller) {
@@ -43,11 +52,19 @@ public class SocketInput {
     public void close() {
         shutdown();
         try {
+            if (bufferedSource != null) {
+                bufferedSource.close();
+                bufferedSource = null;
+            }
+            if (source != null) {
+                source.close();
+                source = null;
+            }
             if (input != null) {
                 input.close();
                 input = null;
-                listener = null;
             }
+            listener = null;
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -56,13 +73,16 @@ public class SocketInput {
 
 
     public void startup() {
+        Debug.E("socket", "连接    1 ");
         if (!this.done && readerThread != null) {
             return;
         }
         done = false;
+        Debug.E("socket", "连接     2");
         if (readerThread != null && readerThread.isAlive()) {
             return;
         }
+        Debug.E("socket", "连接     3");
         readerThread = new Thread() {
             public void run() {
                 parsePackets(this);
@@ -87,16 +107,20 @@ public class SocketInput {
 
     private void parsePackets(Thread thisThread) {
         byte[] buffer = new byte[1024 * 20];
-        int length = 0;
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
-            while (!this.done && this.readerThread == thisThread && client.isConnect() && ((length = input.read(buffer)) != -1) && socket.isConnected()) {
-                if (length > 0) {
-                    outputStream.write(buffer, 0, length);
-                    byte[] result = outputStream.toByteArray();
-                    if (null != listener)
-                        listener.receiveByteData(result);
-                    outputStream.reset();
+            while (!this.done && this.readerThread == thisThread && socket.isConnected()) {
+                try {
+                    int length = bufferedSource.read(buffer);
+                    if (length > 0) {
+                        outputStream.write(buffer, 0, length);
+                        byte[] result = outputStream.toByteArray();
+                        outputStream.reset();
+                        if (null != listener)
+                            listener.receiveByteData(result);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }
         } catch (Exception e) {

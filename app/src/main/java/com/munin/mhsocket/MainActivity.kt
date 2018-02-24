@@ -11,18 +11,18 @@ import com.munin.mhsocket.socket.interfaces.ISocketListener
 
 import kotlinx.android.synthetic.main.activity_main.*
 
-class MainActivity : AppCompatActivity(),ISocketListener {
+class MainActivity : AppCompatActivity(), ISocketListener {
     override fun onSocketState(socketState: Int, description: String?) {
         Log.e("socket", "state$socketState $description")
     }
 
     override fun sendData(data: ByteArray?) {
-        Log.e("socket", "state$data")
+        Log.e("socket", "发送$data")
 
     }
 
     override fun receiveData(data: ByteArray?) {
-        Log.e("socket", "receive$data")
+        Log.e("socket", "接收$data")
 
     }
 
@@ -31,18 +31,19 @@ class MainActivity : AppCompatActivity(),ISocketListener {
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
         SocketManager.newInstance()
-                .setHostPort("192.168.1.1",8888)
+                .setHostPort("192.168.1.1", 8080)
                 .build()
                 .setListener(this)
                 .startSocket()
-                .setHeart(byteArrayOf(1,2,3,4,5,6,7))
+                .setHeart(byteArrayOf(1, 2, 3))
                 .startCheckConnect()
                 .startHeart()
+
 
         fab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                     .setAction("Action", null).show()
-            SocketManager.newInstance().build().sendByteMsg(byteArrayOf(1,2,3))
+            SocketManager.newInstance().build().sendByteMsg(byteArrayOf(1, 2, 3))
         }
     }
 
