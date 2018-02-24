@@ -96,6 +96,7 @@ public class SocketOutput {
     }
 
     private void writePackets(Thread thisThread) {
+        try{
         while (!this.done && this.writerThread == thisThread && socket.isConnected()) {
             byte[] packet = nextPacket();
             if (packet != null && !done && this.writerThread == thisThread) {
@@ -110,6 +111,10 @@ public class SocketOutput {
             }
         }
         if (!socket.isConnected()) {
+            close();
+            if (null != client)
+                client.destroy();
+        }}catch (Exception e){
             close();
             if (null != client)
                 client.destroy();

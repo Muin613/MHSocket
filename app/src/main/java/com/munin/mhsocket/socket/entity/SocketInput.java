@@ -133,6 +133,7 @@ public class SocketInput {
                 e1.printStackTrace();
             }
             close();
+            if(null!=client)
             client.destroy();
         }
     }
