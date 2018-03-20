@@ -112,12 +112,12 @@ public class SocketOutput {
         }
         if (!socket.isConnected()) {
             close();
-            if (null != client)
-                client.destroy();
+//            if (null != client)
+//                client.destroy();
         }}catch (Exception e){
             close();
-            if (null != client)
-                client.destroy();
+//            if (null != client)
+//                client.destroy();
         }
     }
 

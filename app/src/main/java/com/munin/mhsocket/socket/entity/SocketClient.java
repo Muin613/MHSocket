@@ -30,8 +30,8 @@ public class SocketClient {
             if (socket.isConnected()) {
                 socket.setReceiveBufferSize(1024 * 20);
                 socket.setTcpNoDelay(true);
-                input = new SocketInput(this, socket.getInputStream(),socket);
-                output = new SocketOutput(this, socket.getOutputStream(),socket);
+                input = new SocketInput(this, socket.getInputStream(), socket);
+                output = new SocketOutput(this, socket.getOutputStream(), socket);
                 input.bindListener(controller);
                 input.startup();
                 output.startup();
@@ -96,7 +96,7 @@ public class SocketClient {
     }
 
     public boolean isConnect() {
-        if (socket == null||input==null||output==null)
+        if (socket == null || input == null || output == null || input.getInput() == null || output.getOutput() == null)
             return false;
         return socket.isConnected();
     }

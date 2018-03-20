@@ -142,6 +142,11 @@ public class SocketManager implements ISocket, ISocketStateListener {
     @Override
     public SocketManager reconnect() {
         reconnectState();
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         startSocket();
         return this;
     }
