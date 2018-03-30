@@ -35,7 +35,7 @@ class MainActivity : AppCompatActivity(), ISocketListener {
                 .build()
                 .setListener(this)
                 .startSocket()
-                .setHeart(byteArrayOf(1, 2, 3))
+                .setHeart(HeartCmd.heart())
                 .startCheckConnect()
                 .startHeart()
 

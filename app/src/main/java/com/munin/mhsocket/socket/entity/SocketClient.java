@@ -16,10 +16,12 @@ public class SocketClient {
     SocketInput input;
     SocketOutput output;
     ISocketState listener;
+    private boolean error = false;
 
     public SocketClient(SocketConfig config, ISocketState listener) {
         this.config = config;
         this.listener = listener;
+        error = true;
     }
 
     public void createClient(ISocketController controller) {
@@ -30,19 +32,28 @@ public class SocketClient {
             if (socket.isConnected()) {
                 socket.setReceiveBufferSize(1024 * 20);
                 socket.setTcpNoDelay(true);
-                input = new SocketInput(this, socket.getInputStream(), socket);
-                output = new SocketOutput(this, socket.getOutputStream(), socket);
+                input = new SocketInput(this, socket.getInputStream());
+                output = new SocketOutput(this, socket.getOutputStream());
                 input.bindListener(controller);
                 input.startup();
                 output.startup();
+                error = false;
                 listener.connectedState();
             } else {
+                error = true;
                 listener.disconnectState();
             }
         } catch (Exception e) {
             e.printStackTrace();
+            error = true;
             listener.createFailState();
         }
+    }
+
+
+    public void error() {
+        error = true;
+        listener.connectErrorState();
     }
 
     public void destroy() {
@@ -96,9 +107,7 @@ public class SocketClient {
     }
 
     public boolean isConnect() {
-        if (socket == null || input == null || output == null || input.getInput() == null || output.getOutput() == null)
-            return false;
-        return socket.isConnected();
+        return !error;
     }
 
     private void closeIO() {

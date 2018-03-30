@@ -28,13 +28,17 @@ public class SocketManager implements ISocket, ISocketStateListener {
     private Timer checkTimer;
     private Object lock;
     private Object checkLock;
+    private Object lock1;
     private byte[] heartData = null;
     private int heartTime = 1000;
     private ISocketListener listener;
     private int heartTimeRatio = 1;
+    private long time;
+    private Thread createThread;
+    private Thread destroyThread;
 
     private SocketManager() {
-
+        time = System.currentTimeMillis();
     }
 
     public static synchronized SocketManager newInstance() {
@@ -80,6 +84,7 @@ public class SocketManager implements ISocket, ISocketStateListener {
                         .build();
             lock = new Object();
             checkLock = new Object();
+            lock1 = new Object();
         }
     }
 
@@ -111,13 +116,18 @@ public class SocketManager implements ISocket, ISocketStateListener {
 
     @Override
     public synchronized SocketManager stopSocket() {
-        new Thread(new Runnable() {
+        if (destroyThread != null && destroyThread.isAlive()) {
+            destroyThread.interrupt();
+            destroyThread = null;
+        }
+        destroyThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 if (null != client)
                     client.destroy();
             }
-        }).start();
+        });
+        destroyThread.start();
         return this;
     }
 
@@ -141,13 +151,14 @@ public class SocketManager implements ISocket, ISocketStateListener {
 
     @Override
     public SocketManager reconnect() {
-        reconnectState();
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        synchronized (lock1) {
+            if (System.currentTimeMillis() - time > 1000 && !client.isConnect()) {
+                reconnectState();
+                Debug.E("socket", " 尝试重连");
+                startSocket();
+                time = System.currentTimeMillis();
+            }
         }
-        startSocket();
         return this;
     }
 
@@ -195,6 +206,11 @@ public class SocketManager implements ISocket, ISocketStateListener {
     }
 
     @Override
+    public void connectErrorState() {
+
+    }
+
+    @Override
     public void reconnectState() {
         Debug.E("socket", " socket reconnect");
         if (null != listener)
@@ -202,7 +218,11 @@ public class SocketManager implements ISocket, ISocketStateListener {
     }
 
     private void start() {
-        new Thread(new Runnable() {
+        if (createThread != null && createThread.isAlive()) {
+            createThread.interrupt();
+            createThread = null;
+        }
+        createThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 synchronized (SocketManager.this) {
@@ -214,7 +234,8 @@ public class SocketManager implements ISocket, ISocketStateListener {
                     }
                 }
             }
-        }).start();
+        });
+        createThread.start();
     }
 
     public SocketManager startCheckConnect() {

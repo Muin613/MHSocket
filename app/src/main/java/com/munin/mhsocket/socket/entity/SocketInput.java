@@ -23,15 +23,13 @@ public class SocketInput {
     private volatile boolean done = false;
     private Thread readerThread;
     private ISocketController listener;
-    Socket socket;
     BufferedSource bufferedSource;
     Source source;
 
-    public SocketInput(SocketClient client, InputStream input, Socket socket) {
+    public SocketInput(SocketClient client, InputStream input) {
         this.client = client;
         this.input = input;
         done = false;
-        this.socket = socket;
         source = Okio.source(this.input);
         bufferedSource = Okio.buffer(source);
     }
@@ -109,19 +107,16 @@ public class SocketInput {
         byte[] buffer = new byte[1024 * 20];
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
-            while (!this.done && this.readerThread == thisThread && socket.isConnected()) {
-                try {
-                    int length = bufferedSource.read(buffer);
-                    if (length > 0) {
-                        outputStream.write(buffer, 0, length);
-                        byte[] result = outputStream.toByteArray();
-                        outputStream.reset();
-                        if (null != listener)
-                            listener.receiveByteData(result);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
+            while (!this.done && this.readerThread == thisThread) {
+                int length = bufferedSource.read(buffer);
+                if (length > 0) {
+                    outputStream.write(buffer, 0, length);
+                    byte[] result = outputStream.toByteArray();
+                    outputStream.reset();
+                    if (null != listener)
+                        listener.receiveByteData(result);
                 }
+
             }
         } catch (Exception e) {
             try {
@@ -133,8 +128,8 @@ public class SocketInput {
                 e1.printStackTrace();
             }
             close();
-//            if(null!=client)
-//            client.destroy();
+            if (null != client)
+                client.error();
         }
     }
 

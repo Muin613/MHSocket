@@ -21,14 +21,12 @@ public class SocketOutput {
     private Thread writerThread;
     private volatile boolean done = false;
     private final BlockingQueue<byte[]> queue = new ArrayBlockingQueue<byte[]>(500, true);
-    Socket socket;
     BufferedSink bufferedSink;
     Sink sink;
 
-    public SocketOutput(SocketClient client, OutputStream output, Socket socket) {
+    public SocketOutput(SocketClient client, OutputStream output) {
         this.client = client;
         this.output = output;
-        this.socket = socket;
         sink = Okio.sink(this.output);
         bufferedSink = Okio.buffer(sink);
         done = false;
@@ -96,28 +94,21 @@ public class SocketOutput {
     }
 
     private void writePackets(Thread thisThread) {
-        try{
-        while (!this.done && this.writerThread == thisThread && socket.isConnected()) {
-            byte[] packet = nextPacket();
-            if (packet != null && !done && this.writerThread == thisThread) {
-                try {
+        try {
+            while (!this.done && this.writerThread == thisThread) {
+                byte[] packet = nextPacket();
+                if (packet != null && !done && this.writerThread == thisThread) {
                     if (packet.length > 0) {
                         bufferedSink.write(packet);
                         bufferedSink.flush();
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
+
                 }
             }
-        }
-        if (!socket.isConnected()) {
+        } catch (Exception e) {
             close();
-//            if (null != client)
-//                client.destroy();
-        }}catch (Exception e){
-            close();
-//            if (null != client)
-//                client.destroy();
+            if (null != client)
+                client.error();
         }
     }
 

@@ -24,5 +24,7 @@ public interface ISocketState {
     //取消连接
     void cancelConnectState();
 
+    //连接出错
+    void connectErrorState();
 
 }
